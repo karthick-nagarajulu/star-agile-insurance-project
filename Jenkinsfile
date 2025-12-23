@@ -1,65 +1,72 @@
-node{
-    
+node {
     def mavenHome
     def mavenCMD
-    def docker
+    def dockerHome
     def dockerCMD
-    def tagName
+    def tagName = "3.0"
     
-    stage('prepare enviroment'){
-        echo 'initialize all the variables'
-        mavenHome = tool name: 'maven' , type: 'maven'
+    stage('Prepare Environment') {
+        echo 'Initializing tools...'
+        mavenHome = tool name: 'maven', type: 'maven'
         mavenCMD = "${mavenHome}/bin/mvn"
-        docker = tool name: 'docker' , type: 'org.jenkinsci.plugins.docker.commons.tools.DockerTool'
-        dockerCMD = "${docker}/bin/docker"
-        tagName="3.0"
+        
+        // Ensure Docker is configured in Global Tool Configuration
+        dockerHome = tool name: 'docker', type: 'org.jenkinsci.plugins.docker.commons.tools.DockerTool'
+        dockerCMD = "${dockerHome}/bin/docker"
     }
     
-    stage('git code checkout'){
-        try{
-            echo 'checkout the code from git repository'
-            git 'https://github.com/shubhamkushwah123/star-agile-insurance-project.git'
-        }
-        catch(Exception e){
-            echo 'Exception occured in Git Code Checkout Stage'
-            currentBuild.result = "FAILURE"
-            emailext body: '''Dear All,
-            The Jenkins job ${JOB_NAME} has been failed. Request you to please have a look at it immediately by clicking on the below link. 
-            ${BUILD_URL}''', subject: 'Job ${JOB_NAME} ${BUILD_NUMBER} is failed', to: 'shubham@gmail.com'
-        }
+    stage('Git Checkout') {
+        git 'https://github.com/karthick-nagarajulu/star-agile-insurance-project.git'
+    }
+
+    stage('Unit Tests') {
+        echo 'Running Maven Tests...'
+        // This generates the surefire reports used in the next stage
+        sh "${mavenCMD} test"
     }
     
-    stage('Build the Application'){
-        echo "Cleaning... Compiling...Testing... Packaging..."
-        //sh 'mvn clean package'
-        sh "${mavenCMD} clean package"        
+    stage('Build & Package') {
+        echo 'Compiling and Packaging Application...'
+        sh "${mavenCMD} clean package -DskipTests" // Tests already passed
     }
     
-    stage('publish test reports'){
-        publishHTML([allowMissing: false, alwaysLinkToLastBuild: false, keepAll: false, reportDir: '/var/lib/jenkins/workspace/Capstone-Project-Live-Demo/target/surefire-reports', reportFiles: 'index.html', reportName: 'HTML Report', reportTitles: '', useWrapperFileDirectly: true])
+    stage('Publish Reports') {
+        publishHTML([
+            allowMissing: false, 
+            alwaysLinkToLastBuild: false, 
+            keepAll: true, 
+            reportDir: 'target/surefire-reports', 
+            reportFiles: 'index.html', 
+            reportName: 'JUnit Test Report'
+        ])
     }
     
-    stage('Containerize the application'){
-        echo 'Creating Docker image'
-        sh "${dockerCMD} build -t shubhamkushwah123/insure-me:${tagName} ."
+    stage('Docker Build') {
+        sh "${dockerCMD} build -t sdfa777/insurance-star_agile-project-3:${tagName} ."
     }
     
-    stage('Pushing it ot the DockerHub'){
-        echo 'Pushing the docker image to DockerHub'
+    stage('Push to DockerHub') {
         withCredentials([string(credentialsId: 'dock-password', variable: 'dockerHubPassword')]) {
-        sh "${dockerCMD} login -u shubhamkushwah123 -p ${dockerHubPassword}"
-        sh "${dockerCMD} push shubhamkushwah123/insure-me:${tagName}"
-            
+            sh "${dockerCMD} login -u sdfa777 -p ${dockerHubPassword}"
+            sh "${dockerCMD} push sdfa777/insurance-star_agile-project-3:${tagName}"
         }
-        
-    stage('Configure and Deploy to the test-server'){
-        ansiblePlaybook become: true, credentialsId: 'ansible-key', disableHostKeyChecking: true, installation: 'ansible', inventory: '/etc/ansible/hosts', playbook: 'ansible-playbook.yml'
     }
+
+    stage('Approval for EKS') {
+        // Pauses execution until a user clicks 'Approve' in Jenkins UI
+        input message: "Deploy version ${tagName} to EKS Cluster?", ok: "Deploy Now"
+    }
+
+    stage('Deploy to EKS') {
+        echo 'Deploying to Kubernetes...'
+        // 1. Update kubeconfig to point to your cluster
+        sh "aws eks update-kubeconfig --region ap-south-1 --name capstone-project"
         
+        // 2. Apply your K8s deployment and service files
+        // Ensure deployment.yaml uses the ${tagName} variable or 'latest'
+        sh "kubectl apply -f kubernetes/deployment.yaml"
+        sh "kubectl apply -f kubernetes/service.yaml"
         
+        echo 'Deployment complete! Check status with: kubectl get pods'
     }
 }
-
-
-
-
