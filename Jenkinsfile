@@ -10,8 +10,8 @@ node {
         mavenHome = tool name: 'maven-1', type: 'maven'
         mavenCMD = "${mavenHome}/bin/mvn"
         
-        dockerHome = tool name: 'docker', type: 'org.jenkinsci.plugins.docker.commons.tools.DockerTool'
-        dockerCMD = "${dockerHome}/bin/docker"
+    
+        dockerCMD = "docker"
     }
     
     stage('Git Checkout') {
