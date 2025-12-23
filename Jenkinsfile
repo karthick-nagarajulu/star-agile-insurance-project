@@ -73,4 +73,4 @@ node {
             echo 'Deployment complete!'
         }
     }
-)
+}
