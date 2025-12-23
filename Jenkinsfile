@@ -45,8 +45,15 @@ node {
     }
     
     stage('Push to DockerHub') {
-        withCredentials([string(credentialsId: 'dock-password', variable: 'dockerHubPassword')]) {
-            sh "${dockerCMD} login -u sdfa777 -p ${dockerHubPassword}"
+        // CHANGE: Use usernamePassword instead of string
+        withCredentials([usernamePassword(credentialsId: 'dock-password', 
+                                          usernameVariable: 'DOCKER_USER', 
+                                          passwordVariable: 'DOCKER_PASS')]) {
+            
+            // Secure login using the injected variables
+            sh "echo ${DOCKER_PASS} | ${dockerCMD} login -u ${DOCKER_USER} --password-stdin"
+            
+            // Push the image using your specific tag
             sh "${dockerCMD} push sdfa777/insurance-star_agile-project-3:${tagName}"
         }
     }
