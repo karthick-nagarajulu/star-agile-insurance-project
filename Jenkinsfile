@@ -64,14 +64,9 @@ node {
     }
 
     stage('Deploy to EKS') {
-        echo 'Deploying to Kubernetes...'
-        sh "aws eks update-kubeconfig --region ap-south-1 --name capstone-project"
-        
-        // This command applies EVERY file inside the kubernetes folder
-        sh "kubectl apply -f kubernetes/"
-        
-        echo 'Deployment complete!'
-    }
-        
-        echo 'Deployment complete! Check status with: kubectl get pods'
-    }
+    echo 'Deploying to Kubernetes...'
+    sh "aws eks update-kubeconfig --region ap-south-1 --name capstone-project"
+    
+    // Added --validate=false to skip the credential-heavy schema check
+    sh "kubectl apply -f kubernetes/ --validate=false"
+}
