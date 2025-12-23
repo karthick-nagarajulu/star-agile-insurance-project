@@ -6,13 +6,12 @@ node {
     def tagName = "3.0"
     
     stage('Prepare Environment') {
-        echo 'Initializing tools...'
+        echo 'checking tools...'
         mavenHome = tool name: 'maven-1', type: 'maven'
         mavenCMD = "${mavenHome}/bin/mvn"
         
         // Ensure Docker is configured in Global Tool Configuration
-        dockerHome = tool name: 'docker', type: 'org.jenkinsci.plugins.docker.commons.tools.DockerTool'
-        dockerCMD = "${dockerHome}/bin/docker"
+        dockerCMD = "docker"
     }
     
     stage('Git Checkout') {
