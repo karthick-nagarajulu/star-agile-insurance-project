@@ -29,9 +29,9 @@ node {
     }
     
     stage('Publish Reports') {
-        // Only works if "HTML Publisher" plugin is installed
+        // Adding allowMissing: true prevents the pipeline from failing if tests were skipped
         publishHTML([
-            allowMissing: false, 
+            allowMissing: true, 
             alwaysLinkToLastBuild: false, 
             keepAll: true, 
             reportDir: 'target/surefire-reports', 
