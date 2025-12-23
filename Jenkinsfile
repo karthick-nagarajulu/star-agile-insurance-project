@@ -59,16 +59,13 @@ node {
 
    stage('Deploy to EKS') {
         echo 'Deploying to Kubernetes...'
-        // We set KUBECONFIG specifically for the jenkins user's workspace
-        withEnv(["KUBECONFIG=${WORKSPACE}/.kube/config"]) {
-            // 1. Create the directory for the config
-            sh "mkdir -p ${WORKSPACE}/.kube"
+        // Clean workspace config to force a fresh permission check
+        sh "rm -f ${WORKSPACE}/.kubeconfig"
+        withEnv(["KUBECONFIG=${WORKSPACE}/.kubeconfig"]) {
+            sh "aws eks update-kubeconfig --region ap-south-1 --name capstone-project --kubeconfig ${WORKSPACE}/.kubeconfig"
             
-            // 2. Generate a fresh kubeconfig file that Jenkins definitely has permission to read
-            sh "aws eks update-kubeconfig --region ap-south-1 --name capstone-project --kubeconfig ${WORKSPACE}/.kube/config"
-            
-            // 3. Apply the deployment using the local config
-            sh "kubectl apply -f kubernetes/ --kubeconfig ${WORKSPACE}/.kube/config --validate=false"
+            // Apply the files
+            sh "kubectl apply -f kubernetes/ --kubeconfig ${WORKSPACE}/.kubeconfig"
             
             echo 'Deployment complete!'
         }
