@@ -75,4 +75,3 @@ node {
         
         echo 'Deployment complete! Check status with: kubectl get pods'
     }
-}
