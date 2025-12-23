@@ -57,13 +57,19 @@ node {
         input message: "Deploy version ${tagName} to EKS Cluster?", ok: "Deploy Now"
     }
 
-    stage('Deploy to EKS') {
+   stage('Deploy to EKS') {
         echo 'Deploying to Kubernetes...'
-        sh "aws eks update-kubeconfig --region ap-south-1 --name capstone-project"
-        
-        // Use --validate=false to bypass the credentials error we saw earlier
-        sh "kubectl apply -f kubernetes/ --validate=false"
-        
-        echo 'Deployment complete!'
+        // We set KUBECONFIG specifically for the jenkins user's workspace
+        withEnv(["KUBECONFIG=${WORKSPACE}/.kube/config"]) {
+            // 1. Create the directory for the config
+            sh "mkdir -p ${WORKSPACE}/.kube"
+            
+            // 2. Generate a fresh kubeconfig file that Jenkins definitely has permission to read
+            sh "aws eks update-kubeconfig --region ap-south-1 --name capstone-project --kubeconfig ${WORKSPACE}/.kube/config"
+            
+            // 3. Apply the deployment using the local config
+            sh "kubectl apply -f kubernetes/ --kubeconfig ${WORKSPACE}/.kube/config --validate=false"
+            
+            echo 'Deployment complete!'
+        }
     }
-} // <--- This was the missing brace causing your error!
