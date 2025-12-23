@@ -65,13 +65,13 @@ node {
 
     stage('Deploy to EKS') {
         echo 'Deploying to Kubernetes...'
-        // 1. Update kubeconfig to point to your cluster
         sh "aws eks update-kubeconfig --region ap-south-1 --name capstone-project"
         
-        // 2. Apply your K8s deployment and service files
-        // Ensure deployment.yaml uses the ${tagName} variable or 'latest'
-        sh "kubectl apply -f kubernetes/deployment.yaml"
-        sh "kubectl apply -f kubernetes/service.yaml"
+        // This command applies EVERY file inside the kubernetes folder
+        sh "kubectl apply -f kubernetes/"
+        
+        echo 'Deployment complete!'
+    }
         
         echo 'Deployment complete! Check status with: kubectl get pods'
     }
