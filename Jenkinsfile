@@ -6,12 +6,12 @@ node {
     def tagName = "3.0"
     
     stage('Prepare Environment') {
-        echo 'checking tools...'
-        mavenHome = tool name: 'maven-1', type: 'maven'
+        echo 'Initializing tools...'
+        mavenHome = tool name: 'maven', type: 'maven'
         mavenCMD = "${mavenHome}/bin/mvn"
         
-        // Ensure Docker is configured in Global Tool Configuration
-        dockerCMD = "docker"
+        dockerHome = tool name: 'docker', type: 'org.jenkinsci.plugins.docker.commons.tools.DockerTool'
+        dockerCMD = "${dockerHome}/bin/docker"
     }
     
     stage('Git Checkout') {
@@ -20,16 +20,16 @@ node {
 
     stage('Unit Tests') {
         echo 'Running Maven Tests...'
-        // This generates the surefire reports used in the next stage
         sh "${mavenCMD} test"
     }
     
     stage('Build & Package') {
         echo 'Compiling and Packaging Application...'
-        sh "${mavenCMD} clean package -DskipTests" // Tests already passed
+        sh "${mavenCMD} clean package -DskipTests" 
     }
     
     stage('Publish Reports') {
+        // Only works if "HTML Publisher" plugin is installed
         publishHTML([
             allowMissing: false, 
             alwaysLinkToLastBuild: false, 
@@ -45,28 +45,25 @@ node {
     }
     
     stage('Push to DockerHub') {
-        // CHANGE: Use usernamePassword instead of string
         withCredentials([usernamePassword(credentialsId: 'dock-password', 
                                           usernameVariable: 'DOCKER_USER', 
                                           passwordVariable: 'DOCKER_PASS')]) {
-            
-            // Secure login using the injected variables
             sh "echo ${DOCKER_PASS} | ${dockerCMD} login -u ${DOCKER_USER} --password-stdin"
-            
-            // Push the image using your specific tag
             sh "${dockerCMD} push sdfa777/insurance-star_agile-project-3:${tagName}"
         }
     }
 
     stage('Approval for EKS') {
-        // Pauses execution until a user clicks 'Approve' in Jenkins UI
         input message: "Deploy version ${tagName} to EKS Cluster?", ok: "Deploy Now"
     }
 
     stage('Deploy to EKS') {
-    echo 'Deploying to Kubernetes...'
-    sh "aws eks update-kubeconfig --region ap-south-1 --name capstone-project"
-    
-    // Added --validate=false to skip the credential-heavy schema check
-    sh "kubectl apply -f kubernetes/ --validate=false"
-}
+        echo 'Deploying to Kubernetes...'
+        sh "aws eks update-kubeconfig --region ap-south-1 --name capstone-project"
+        
+        // Use --validate=false to bypass the credentials error we saw earlier
+        sh "kubectl apply -f kubernetes/ --validate=false"
+        
+        echo 'Deployment complete!'
+    }
+} // <--- This was the missing brace causing your error!
