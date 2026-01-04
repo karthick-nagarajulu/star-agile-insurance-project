@@ -33,12 +33,12 @@ node {
     withCredentials([file(credentialsId: 'monitoring-pem-key', variable: 'PEM')]) {
         sh """
             chmod 400 ${PEM}
-            # SSH directly as the 'ansible' user who has the environment ready
+            # SSH as ansible user and use 'bash -lc' to ensure all paths are loaded
             ssh -o StrictHostKeyChecking=no -i ${PEM} ansible@10.0.1.107 \
-            "ansible-playbook -i ~/ansible/inventory.ini ~/ansible/playbooks/deploy-ec2.yml --extra-vars 'image_tag=${tagName}'"
+            "bash -lc 'ansible-playbook -i ~/ansible/inventory.ini ~/ansible/playbooks/deploy-ec2.yml --extra-vars \"image_tag=${tagName}\"'"
         """
     }
-}
+    }
 
     stage('Deploy to Kubernetes') {
         echo 'Deploying to K8s...'
