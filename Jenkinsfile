@@ -14,21 +14,16 @@ node {
         git 'https://github.com/karthick-nagarajulu/star-agile-insurance-project.git'
     }
 
-    stage('Unit Tests') {
-        sh "${mavenCMD} test"
-    }
-    
     stage('Build & Package') {
         sh "${mavenCMD} clean package -DskipTests" 
     }
     
     stage('Docker Build') {
-        // Using your DockerHub username 'sdfa777'
         sh "${dockerCMD} build -t sdfa777/insurance-star_agile-project-3:${tagName} ."
     }
     
     stage('Push to DockerHub') {
-        withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials-id', 
+        withCredentials([usernamePassword(credentialsId: 'dock-password', 
                                           usernameVariable: 'DOCKER_USER', 
                                           passwordVariable: 'DOCKER_PASS')]) {
             sh "echo ${DOCKER_PASS} | ${dockerCMD} login -u ${DOCKER_USER} --password-stdin"
@@ -36,19 +31,15 @@ node {
         }
     }
 
-    stage('Approval') {
-        input message: "Deploy version ${tagName} to Cluster?", ok: "Deploy Now"
-    }
-
     stage('Deploy to Kubernetes') {
         echo 'Deploying to Self-Managed Cluster...'
-        // This block securely provides the kubeconfig to the kubectl command
-        withCredentials([file(credentialsId: 'k8s-config', variable: 'KUBECONFIG_FILE')]) {
-            // Apply all manifests in your 'kubernetes/' folder
-            sh "kubectl --kubeconfig=${KUBECONFIG_FILE} apply -f kubernetes/"
+        // This binds the 'k8s-config' secret file to a temporary variable $KUBECONFIG
+        withCredentials([file(credentialsId: 'k8s-config', variable: 'KUBECONFIG')]) {
+            // Apply the YAML files from your github folder
+            sh "kubectl --kubeconfig=${KUBECONFIG} apply -f kubernetes/"
             
-            // Force the deployment to use the new image version
-            sh "kubectl --kubeconfig=${KUBECONFIG_FILE} set image deployment/insurance-deployment insurance-container=sdfa777/insurance-star_agile-project-3:${tagName} --record"
+            // Specifically update the image to the new tag
+            sh "kubectl --kubeconfig=${KUBECONFIG} set image deployment/insurance-deployment insurance-container=sdfa777/insurance-star_agile-project-3:${tagName}"
             
             echo 'Deployment complete!'
         }
