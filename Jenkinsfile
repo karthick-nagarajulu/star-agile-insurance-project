@@ -33,12 +33,12 @@ node {
     withCredentials([file(credentialsId: 'monitoring-pem-key', variable: 'PEM')]) {
         sh """
             chmod 400 ${PEM}
-            # SSH as ansible user and use 'bash -lc' to ensure all paths are loaded
+            # Now that we fixed the server-side permissions, this will work:
             ssh -o StrictHostKeyChecking=no -i ${PEM} ansible@10.0.1.107 \
             "bash -lc 'ansible-playbook -i ~/ansible/inventory.ini ~/ansible/playbooks/deploy-ec2.yml --extra-vars \"image_tag=${tagName}\"'"
         """
     }
-    }
+}
 
     stage('Deploy to Kubernetes') {
         echo 'Deploying to K8s...'
