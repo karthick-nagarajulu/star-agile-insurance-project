@@ -31,13 +31,31 @@ node {
         }
     }
 
-    stage('Deploy to Kubernetes') {
+    stage('Deploy to Worker') {
+            steps {
+                // Ensure 'medicure-ssh-key' exists in Jenkins Credentials as 'SSH Username with private key'
+                sshagent(credentials: ['key']) {
+                    sh """
+ssh -o StrictHostKeyChecking=no ubuntu@${env.jenkins} << 'EOF'
+    docker pull ${DOCKER_LATEST}
+    docker stop health-app || true
+    docker rm health-app || true
+    docker run -d --name health-app -p 8081:8080 ${DOCKER_LATEST}
+EOF
+                    """
+                }
+            }
+        }
+
+   stage('Deploy to Kubernetes') {
     echo 'Deploying to Self-Managed Cluster...'
     withCredentials([file(credentialsId: 'k8s-config', variable: 'KUBECONFIG_FILE')]) {
-        // 1. Use single quotes ('') instead of double quotes ("") to fix the security warning
-        // 2. Ensure the deployment name (insurance-deployment) matches 'kubectl get deployments'
+        // This command confirmed the name is 'insurance-app'
         sh 'kubectl --kubeconfig=$KUBECONFIG_FILE apply -f kubernetes/'
-        sh 'kubectl --kubeconfig=$KUBECONFIG_FILE set image deployment/insurance-deployment insurance-container=sdfa777/insurance-star_agile-project-3:${tagName}'
+        
+        // Use the correct name: insurance-app
+        // Also added the correct container name usually found in these projects: insurance-container
+        sh "kubectl --kubeconfig=\$KUBECONFIG_FILE set image deployment/insurance-app insurance-container=sdfa777/insurance-star_agile-project-3:${tagName}"
         
         echo 'Deployment complete!'
     }
