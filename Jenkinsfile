@@ -29,16 +29,17 @@ node {
     }
 
     stage('Deploy to EC2 (via Remote Ansible)') {
-    echo 'Triggering Ansible on Monitoring EC2...'
-    withCredentials([file(credentialsId: 'monitoring-pem-key', variable: 'PEM')]) {
-        sh """
-            chmod 400 ${PEM}
-            # SSH as ubuntu, but run the playbook located in the ansible user's folder
-            ssh -o StrictHostKeyChecking=no -i ${PEM} ubuntu@10.0.1.107 \
-            "ansible-playbook -i /home/ansible/ansible/inventory.ini /home/ansible/ansible/playbooks/deploy-ec2.yml --extra-vars 'image_tag=${tagName}'"
-        """
+        echo 'Triggering Ansible on Monitoring EC2...'
+        withCredentials([file(credentialsId: 'monitoring-pem-key', variable: 'PEM')]) {
+            sh """
+                chmod 400 ${PEM}
+                # We use the ubuntu user but point to the ansible user's home directory where the files are
+                ssh -o StrictHostKeyChecking=no -i ${PEM} ubuntu@10.0.1.107 \
+                "export PATH=\$PATH:/usr/bin:/usr/local/bin && \
+                ansible-playbook -i /home/ansible/ansible/inventory.ini /home/ansible/ansible/playbooks/deploy-ec2.yml --extra-vars 'image_tag=${tagName}'"
+            """
+        }
     }
-}
 
     stage('Deploy to Kubernetes') {
         echo 'Deploying to K8s...'
