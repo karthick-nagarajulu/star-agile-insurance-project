@@ -32,16 +32,13 @@ node {
     }
 
     stage('Deploy to Kubernetes') {
-        echo 'Deploying to Self-Managed Cluster...'
-        // This binds the 'k8s-config' secret file to a temporary variable $KUBECONFIG
-        withCredentials([file(credentialsId: 'k8s-config', variable: 'KUBECONFIG')]) {
-            // Apply the YAML files from your github folder
-            sh "kubectl --kubeconfig=${KUBECONFIG} apply -f kubernetes/"
-            
-            // Specifically update the image to the new tag
-            sh "kubectl --kubeconfig=${KUBECONFIG} set image deployment/insurance-deployment insurance-container=sdfa777/insurance-star_agile-project-3:${tagName}"
-            
-            echo 'Deployment complete!'
-        }
+    echo 'Deploying to Self-Managed Cluster...'
+    withCredentials([file(credentialsId: 'k8s-config', variable: 'KUBECONFIG_FILE')]) {
+        // 1. Use single quotes ('') instead of double quotes ("") to fix the security warning
+        // 2. Ensure the deployment name (insurance-deployment) matches 'kubectl get deployments'
+        sh 'kubectl --kubeconfig=$KUBECONFIG_FILE apply -f kubernetes/'
+        sh 'kubectl --kubeconfig=$KUBECONFIG_FILE set image deployment/insurance-deployment insurance-container=sdfa777/insurance-star_agile-project-3:${tagName}'
+        
+        echo 'Deployment complete!'
     }
 }
