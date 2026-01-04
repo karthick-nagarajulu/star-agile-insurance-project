@@ -28,14 +28,14 @@ node {
         }
     }
 
-    stage('Deploy to EC2 (via Remote Ansible)') {
+   stage('Deploy to EC2 (via Remote Ansible)') {
     echo 'Triggering Ansible on Monitoring EC2...'
     withCredentials([file(credentialsId: 'monitoring-pem-key', variable: 'PEM')]) {
         sh """
             chmod 400 ${PEM}
-            # Now that we fixed the server-side permissions, this will work:
-            ssh -o StrictHostKeyChecking=no -i ${PEM} ansible@10.0.1.107 \
-            "bash -lc 'ansible-playbook -i ~/ansible/inventory.ini ~/ansible/playbooks/deploy-ec2.yml --extra-vars \"image_tag=${tagName}\"'"
+            # Now connecting as 'ansible' - this will work because of your manual fix!
+            ssh -o StrictHostKeyChecking=no -i ${PEM} ansible@10.0.1.174 \
+            "ansible-playbook -i /home/ansible/ansible/inventory.ini /home/ansible/ansible/playbooks/deploy-ec2.yml --extra-vars 'image_tag=${tagName}'"
         """
     }
 }
