@@ -33,9 +33,9 @@ node {
     withCredentials([file(credentialsId: 'monitoring-pem-key', variable: 'PEM')]) {
         sh """
             chmod 400 ${PEM}
-            # 'bash -lc' loads the environment exactly like your manual login
-            ssh -o StrictHostKeyChecking=no -i ${PEM} ubuntu@10.0.1.107 \
-            "bash -lc 'ansible-playbook -i /home/ansible/ansible/inventory.ini /home/ansible/ansible/playbooks/deploy-ec2.yml --extra-vars \"image_tag=${tagName}\"'"
+            # SSH directly as the 'ansible' user who has the environment ready
+            ssh -o StrictHostKeyChecking=no -i ${PEM} ansible@10.0.1.107 \
+            "ansible-playbook -i ~/ansible/inventory.ini ~/ansible/playbooks/deploy-ec2.yml --extra-vars 'image_tag=${tagName}'"
         """
     }
 }
