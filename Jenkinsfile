@@ -1,17 +1,13 @@
 node {
     def mavenHome
     def mavenCMD
-    def dockerHome
-    def dockerCMD
+    def dockerCMD = "docker"
     def tagName = "3.0"
     
     stage('Prepare Environment') {
         echo 'Initializing tools...'
         mavenHome = tool name: 'maven-1', type: 'maven'
         mavenCMD = "${mavenHome}/bin/mvn"
-        
-    
-        dockerCMD = "docker"
     }
     
     stage('Git Checkout') {
@@ -19,28 +15,15 @@ node {
     }
 
     stage('Unit Tests') {
-        echo 'Running Maven Tests...'
         sh "${mavenCMD} test"
     }
     
     stage('Build & Package') {
-        echo 'Compiling and Packaging Application...'
         sh "${mavenCMD} clean package -DskipTests" 
     }
     
-    stage('Publish Reports') {
-        // Adding allowMissing: true prevents the pipeline from failing if tests were skipped
-        publishHTML([
-            allowMissing: true, 
-            alwaysLinkToLastBuild: false, 
-            keepAll: true, 
-            reportDir: 'target/surefire-reports', 
-            reportFiles: 'index.html', 
-            reportName: 'JUnit Test Report'
-        ])
-    }
-    
     stage('Docker Build') {
+        // Using your DockerHub username 'sdfa777'
         sh "${dockerCMD} build -t sdfa777/insurance-star_agile-project-3:${tagName} ."
     }
     
@@ -53,19 +36,19 @@ node {
         }
     }
 
-    stage('Approval for EKS') {
-        input message: "Deploy version ${tagName} to EKS Cluster?", ok: "Deploy Now"
+    stage('Approval') {
+        input message: "Deploy version ${tagName} to Cluster?", ok: "Deploy Now"
     }
 
-   stage('Deploy to EKS') {
-        echo 'Deploying to Kubernetes...'
-        // Clean workspace config to force a fresh permission check
-        sh "rm -f ${WORKSPACE}/.kubeconfig"
-        withEnv(["KUBECONFIG=${WORKSPACE}/.kubeconfig"]) {
-            sh "aws eks update-kubeconfig --region ap-south-1 --name capstone-project --kubeconfig ${WORKSPACE}/.kubeconfig"
+    stage('Deploy to Kubernetes') {
+        echo 'Deploying to Self-Managed Cluster...'
+        // This block securely provides the kubeconfig to the kubectl command
+        withCredentials([file(credentialsId: 'k8s-config', variable: 'KUBECONFIG_FILE')]) {
+            // Apply all manifests in your 'kubernetes/' folder
+            sh "kubectl --kubeconfig=${KUBECONFIG_FILE} apply -f kubernetes/"
             
-            // Apply the files
-            sh "kubectl apply -f kubernetes/ --kubeconfig ${WORKSPACE}/.kubeconfig"
+            // Force the deployment to use the new image version
+            sh "kubectl --kubeconfig=${KUBECONFIG_FILE} set image deployment/insurance-deployment insurance-container=sdfa777/insurance-star_agile-project-3:${tagName} --record"
             
             echo 'Deployment complete!'
         }
