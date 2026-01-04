@@ -23,7 +23,7 @@ node {
     }
     
     stage('Push to DockerHub') {
-        withCredentials([usernamePassword(credentialsId: 'dock-password', 
+        withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials-id', 
                                           usernameVariable: 'DOCKER_USER', 
                                           passwordVariable: 'DOCKER_PASS')]) {
             sh "echo ${DOCKER_PASS} | ${dockerCMD} login -u ${DOCKER_USER} --password-stdin"
