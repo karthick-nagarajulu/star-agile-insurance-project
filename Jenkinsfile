@@ -31,11 +31,13 @@ node {
     stage('Deploy to EC2 (via Monitoring Node)') {
         echo 'Triggering Ansible on Monitoring EC2...'
         withCredentials([file(credentialsId: 'monitoring-pem-key', variable: 'PEM')]) {
-            // SSH into Monitoring Node and run the playbook already sitting there
             sh """
                 chmod 400 ${PEM}
-                ssh -o StrictHostKeyChecking=no -i ${PEM} ubuntu@${monitoringIP} \
-                "ansible-playbook -i /home/ubuntu/ansible/inventory.ini /home/ubuntu/ansible/deploy-ec2.yml --extra-vars 'image_tag=${tagName}'"
+                # 1. We use the full path /usr/bin/ansible-playbook
+                # 2. We use the ansible user
+                # 3. We point to the correct file locations we found earlier
+                ssh -o StrictHostKeyChecking=no -i ${PEM} ansible@10.0.1.107 \
+                "/usr/bin/ansible-playbook -i /home/ansible/ansible/inventory.ini /home/ansible/ansible/playbooks/deploy-ec2.yml --extra-vars 'image_tag=${tagName}'"
             """
         }
     }
